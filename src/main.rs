@@ -1,15 +1,15 @@
-use std::{process::Command, sync::LazyLock, thread::sleep, time::{Duration, Instant}};
+use std::{io::{Write, stdout}, process::Command, sync::LazyLock, thread::sleep, time::{Duration, Instant}};
 
 const BUFFER_SIZE: usize = 3885;
-const R1: f64 = 2.0; // Minor radius of the torus
+const R1: f64 = 1.8; // Minor radius of the torus
 const R2: f64 = 3.0; // Major radius
 const K1: f64 = 120.0; // zoom in and out (zoom amount)
 const K2: f64 = 40.0; // distance of camera away from object (and origin)
-const ROT_X: f64 = 0.0; // Rotation speed of donut about the x-axis in degrees per second
-const ROT_Y: f64 = 2.0; // Rotation speed of donut about the y-axis in degrees per second
+const ROT_X: f64 = 0.6; // Rotation speed of donut about the x-axis in degrees per second
+const ROT_Y: f64 = -0.5; // Rotation speed of donut about the y-axis in degrees per second
 const ONE_COMPLETE_REVOLUTION: f64 = 2.0 * std::f64::consts::PI;
-const LIGHT_DIRECTION: (f64,f64,f64) = (0.0, 10.0, 10.0);
-const TIME_DELTA: f64 = 20.0; // in milliseconds. Corresponds to 50 fps
+const LIGHT_DIRECTION: (f64,f64,f64) = (0.0, 0.0, 10.0);
+const TIME_DELTA: f64 = 50.0; // in milliseconds. Corresponds to 20 fps
 
 fn main() {
     assert!(BUFFER_SIZE % 2 == 1);
@@ -33,11 +33,15 @@ fn main() {
                 let c = theta2.sin();
                 let d = theta2.cos();
                 let e = R2 + R1 * b;
-                let f = phi1.cos();
-                let g = phi2.cos();
+                let f = phi1.sin();
+                let g = phi1.cos();
+                let h = phi2.sin();
+                let i = phi2.cos();
 
                 // x,y,z coordinates of point on torus's surface in 3D space
-                let (x, y, z) = ( e * d * g, e * c * f, a * f * g );
+                let (x, y, z) = ( e*d*i + a*h, 
+                                                 e*c*g + e*d*h*f - a*i*f, 
+                                                 e*c*f - e*d*h*f + a*i*g );
                 
                 // check if point is behind the camera and skip further operations if so
                 if (-z + K2) > 0.0 { 
@@ -49,9 +53,12 @@ fn main() {
                     let buffer_index = x_s + y_s * 111 + ((BUFFER_SIZE - 1)/2) as i32;
                     if buffer_index >= 0 && buffer_index < BUFFER_SIZE as i32 {
                         // surface normal vector at point (x,y,z)
-                        let (n_x, n_y, n_z) = (-R1 * e * b * d * g * f * f,
-                                                              -R1 * e * b * c * g * g * f,
-                                                              a * e * g * f);
+                        let (n_x, n_y, n_z) = ( R1*e*b*d*i + a*e*h,
+                                                               R1*e*b*c*g + R1*e*b*d*h*f - a*e*i*f,
+                                                               R1*e*b*c*f - R1*e*b*d*h*g + a*e*i*g );
+                        /*let (n_x, n_y, n_z) = (R1 * e * b * d,
+                                                              R1 * e * b * c,
+                                                              a * e);*/
                         let norm_mag = (n_x.powi(2) + n_y.powi(2) + n_z.powi(2)).sqrt();
                         let light_direction_mag = (LIGHT_DIRECTION.0.powi(2) + LIGHT_DIRECTION.1.powi(2) + LIGHT_DIRECTION.2.powi(2)).sqrt();
                         // dot product of normalized light direction and normalized surface normal
@@ -61,18 +68,21 @@ fn main() {
 
                         if inverse_depth > depth_buffer[buffer_index as usize] {
                             depth_buffer[buffer_index as usize] = inverse_depth;
-                            image_buffer[buffer_index as usize] = shade_pixel(brightness_value);
+                            image_buffer[buffer_index as usize] = shade_pixel(brightness_value * 0.82);
                         } 
                     }
                 }
-                theta1 += 0.01;   
+                theta1 += 0.03;   
             }
-            theta2 += 0.01;
+            theta2 += 0.03;
             theta1 = 0.0;
         }
         theta2 = 0.0;
-        //sleep(Duration::from_millis(1000));
-        Command::new("clear").status().unwrap(); // clearing the terminal before drawing the next frame
+
+        while Instant::now() - instant < Duration::from_millis(TIME_DELTA as u64)  {
+            sleep(Duration::from_millis(2));
+        }
+        print!("{esc}[2J{esc}[1;1H", esc = 27 as char); // clearing the terminal before drawing the next frame
         //Draw image
         for i in 0..BUFFER_SIZE {
             if i % 111 == 0 {
@@ -81,6 +91,7 @@ fn main() {
                 print!("{}", image_buffer[i])
             }
         }
+        stdout().flush().unwrap();
         println!(" ");
         println!("{:?}", Instant::now() - instant);
         instant = Instant::now();
