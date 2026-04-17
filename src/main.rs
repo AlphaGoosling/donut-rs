@@ -1,4 +1,7 @@
-use std::{io::{Write, stdout}, process::Command, sync::LazyLock, thread::sleep, time::{Duration, Instant}};
+use std::io::{Write, stdout};
+use std::time::{Duration, Instant};
+use std::thread::sleep;
+use std::sync::LazyLock;
 
 const BUFFER_SIZE: usize = 3885;
 const R1: f64 = 1.8; // Minor radius of the torus
@@ -12,8 +15,8 @@ const LIGHT_DIRECTION: (f64,f64,f64) = (0.0, 0.0, 10.0);
 const TIME_DELTA: f64 = 50.0; // in milliseconds. Corresponds to 20 fps
 
 fn main() {
-    assert!(BUFFER_SIZE % 2 == 1);
-    assert!(R2 > R1);
+    const {assert!(BUFFER_SIZE % 2 == 1)};
+    const {assert!(R2 > R1)};
     let mut theta1: f64 = 0.0;
     let mut theta2: f64 = 0.0;
     let mut phi1: f64 = 0.0;
@@ -84,11 +87,11 @@ fn main() {
         }
         print!("{esc}[2J{esc}[1;1H", esc = 27 as char); // clearing the terminal before drawing the next frame
         //Draw image
-        for i in 0..BUFFER_SIZE {
+        for (i, pixel) in image_buffer.iter().enumerate() {
             if i % 111 == 0 {
-                print!("\n{}", image_buffer[i])
+                print!("\n{}", pixel)
             } else {
-                print!("{}", image_buffer[i])
+                print!("{}", pixel)
             }
         }
         stdout().flush().unwrap();
@@ -108,11 +111,11 @@ fn shade_pixel(brightness: f64) -> char {
     assert!(LM.len() == LUMINOUSITY_RANGES.len());
 
     if brightness <= LUMINOUSITY_RANGES[0] { 
-        return LM_VEC[0]
+        LM_VEC[0]
     } else if brightness >= LUMINOUSITY_RANGES[LUMINOUSITY_RANGES.len()-1] {
-        return LM_VEC[LM_VEC.len()-1];
+        LM_VEC[LM_VEC.len()-1]
     } else {
         let i = LUMINOUSITY_RANGES.iter().enumerate().find(|&x| *(x.1) > brightness).unwrap().0;
-        return LM_VEC[i];
+        LM_VEC[i]
     }
 }
